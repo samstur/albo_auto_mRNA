@@ -11,4 +11,4 @@ The raw reads are available in NCBI’s short read archive (SRA) under accession
 ### Preprocessing and Quality Control
 Trimmomatic (version 0.39) was used to trim sequence reads based on quality ([script](https://github.com/samstur/albo_auto_mRNA/blob/main/trim.sh))
 
-FastQC (v0.11.9) was used for quality control visualization ([script]https://github.com/samstur/albo_auto_mRNA/blob/main/fastqc.sh)
+FastQC (v0.11.9) was used for quality control visualization ([script](https://github.com/samstur/albo_auto_mRNA/blob/main/fastqc.sh))
