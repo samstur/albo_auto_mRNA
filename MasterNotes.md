@@ -1,7 +1,7 @@
 # Workflow/pipeline details for the albopictus autogeny RNA-seq analysis
 
 ## Upstream 
-Information about sequence reads (raw read count, read alignment rate, etc.) for the data can be found in the following google sheets: ([link]https://docs.google.com/spreadsheets/d/1_RixzDGNsUlvhOMVCTXViuR_Rim8dNrS5joLMOwbsXo/edit#gid=0)
+Information about sequence reads (raw read count, read alignment rate, etc.) for the data can be found in the following google sheets: ([link](https://docs.google.com/spreadsheets/d/1_RixzDGNsUlvhOMVCTXViuR_Rim8dNrS5joLMOwbsXo/edit#gid=0))
 
 ### Data Accession
 Data was generated at Georgetown by Mara, Peter, and Sam.
