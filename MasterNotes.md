@@ -16,7 +16,7 @@ FastQC (v0.11.9) was used for quality control visualization ([script](https://gi
 ### Mapping
 We will be mapping with STAR (v2.7.1a).
 
-Mapping was done using the Aedes albopictus reference genome (aedes_albopictus_AalbF3.fa) and the corresponding annotation file (aedes_albopictus_AalbF3.gff3)
+Mapping was done using our lab's newest Aedes albopictus reference genome (aedes_albopictus_AalbF3.fa) and the corresponding annotation file (aedes_albopictus_AalbF3.gff3)
 
 STAR (v2.7.1a) was used for indexing the genome ([script](https://github.com/samstur/albo_auto_mRNA/blob/main/STAR_genomeIndex.sh))
 
@@ -27,10 +27,10 @@ Output sam files were converted to bam and then indexed ([script](https://github
 ### HTSeq Gene Counts
 HTSeq (v0.13.5) was used to counts reads mapped to genes for downstream analyses ([script](https://github.com/samstur/albo_auto_mRNA/blob/main/htseq_count.sh))
 
-# Downstream analysis of gene counts using R (4.1.3)
+# Downstream analysis of gene counts using R (v4.1.3)
 
-### DESeq package in R was used to identify differentially expressed genes
+### DESeq2 (v1.34.0) package in R was used to identify differentially expressed genes
 ([script](https://github.com/samstur/albo_auto_mRNA/blob/main/DESeq_script.R))
 
-### KEGGREST package in R was used to identify significantly enriched pathways
+### KEGGREST (v1.34.0) package in R was used to identify significantly enriched pathways
 ([script](https://github.com/samstur/albo_auto_mRNA/blob/main/KEGG_Enrichment.R))
