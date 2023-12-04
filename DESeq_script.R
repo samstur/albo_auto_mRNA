@@ -1,52 +1,50 @@
-# This script runs DESeq (specifically starting with htseq count files)
 
-##Install DESeq2
- if (!requireNamespace("BiocManager", quietly = TRUE)) install.packages("BiocManager")
- BiocManager::install("DESeq2")
- BiocManager::install('EnhancedVolcano')
- BiocManager::install("apeglm")
- BiocManager::install("GOplot")
-
-#Load Libraries
-library(DESeq2)
+########################## Installations ###########################
+if (!requireNamespace("BiocManager", quietly = TRUE)) install.packages("BiocManager")
+BiocManager::install("DESeq2")
+BiocManager::install('EnhancedVolcano')
+BiocManager::install("apeglm")
+BiocManager::install("GOplot")
+BiocManager::install("mygene")
+install.packages("RColorBrewer")
 install.packages("ggolot2")
+install.packages("tidyverse")
+install.packages("pheatmap")
+install.packages("reshape2")
+install.packages("viridis")
+install.packages("vsn")
+install.packages("ggthemes")
+install.packages("VennDiagram")
+BiocManager::install("genefilter")
+BiocManager::install("ggrepel")
+
+
+########################## Load Libraries ###########################
+library(DESeq2)
 library(ggplot2)
 library(EnhancedVolcano)
 library(GOplot) 
-
-if (!require("BiocManager", quietly = TRUE))
-  install.packages("BiocManager")
-
-BiocManager::install("mygene")
+library("apeglm")
 library(mygene)
-
-
-install.packages("tidyverse")
 library(tidyverse)
-
-install.packages("pheatmap")
 library(pheatmap)
-
-install.packages("reshape2")
 library(reshape2)
-
-install.packages("viridis")
 library(viridis)
-
-install.packages("RColorBrewer")
 library(RColorBrewer)
- 
-#library(reshape2); library(viridis); 
+library(DESeq2)
+library(vsn)
+library(VennDiagram)
+library(genefilter)
+library(ggrepel)
 
-# Set working directory to source file location
-
+########################## Input HTSeq data files ###########################
 #Choose directory with htseq-count data
-directory<-("C:/Users/samls/Documents/Georgetown/Armbruster Lab/Auto_Biting_RNASeq/data")
-
+directory<-("/Users/samsturiale/Documents/Georgetown/Armbruster Lab/Auto_Biting_RNASeq/data")
 #Create the sample table (this could alternatively be made externally and read in)
 sampleFiles <- list.files(directory)
 head(sampleFiles)
 sampleNames <- sub("_htseqCount","",sampleFiles) #this is removing the ending of the files to better represent the sample names
+sampleNames <- substr(sampleNames, 1, nchar(sampleNames)-4) # this keeps only the treatment plus the replicate
 head(sampleNames)
 sampleConditions <- substr(sampleFiles, 1, 1)#to get conditions I'm pulling the first letter, which is either A (auto) or M (Manassas, anautogenous)
 head(sampleConditions)
@@ -57,227 +55,137 @@ sampleTable <- data.frame(sampleName = sampleNames,
 str(sampleTable)
 sampleTable$condition <- factor(sampleTable$condition)
 View(sampleTable)
-# Make the DESeq dataset
+
+########################## Make the DESeq dataset from this HTSeq count data ###########################
+
 dds <- DESeqDataSetFromHTSeqCount(sampleTable = sampleTable,
                                   directory = directory,
                                   design = ~ condition)
 dds
 
+
+########################## Pre-filtering ###########################
 #DESeq recommends a pre-filtering step to reduce memory size and increase speed. 
-    #They suggest keeping only rows which have 10 reads total
+#They suggest keeping only rows which have 10 reads total
 keep <- rowSums(counts(dds)) >= 10
 dds <- dds[keep,]
 
+########################## Re-level the reference condition ###########################
 #Relevel the condition for what to compare to. 
 ## (Default is first condition alphabetically)
-dds$condition <- relevel(dds$condition, ref = "M")
+dds$condition <- relevel(dds$condition, ref = "A") # setting reference level as the autogenous group
 head(dds$condition)
 
-
-# A bit of quality control
-# Look at the distribution of the count data across the samples
-librarySizes <- colSums(counts(dds))
-
-barplot(librarySizes, 
-        names=names(librarySizes), 
-        las=2, ylim = c(0,1.6e+07),
-        main="Barplot of library sizes")
-
-logcounts <- log2(counts(dds) + 1)
-head(logcounts)
-
-#Is there any difference between per gene counts for each of the sample groups?
-statusCol <- as.numeric(factor(dds$condition)) + 1  # make a colour vector
-
-boxplot(logcounts, 
-        xlab="", 
-        ylab="Log2(Counts)",
-        las=2,
-        col=statusCol)
-
-#Adding median log counts
-abline(h=median(as.matrix(logcounts)), col="blue")
-
-# Transform normalized counts using the rlog function ("RNASEQ20_Day3_HandsOn.pdf")
-rld <- rlog(dds, blind=TRUE)
-auto_pca <- plotPCA(rld, intgroup="condition")
-auto_pca
-
-ggsave("auto_pcaplot.png",plot=auto_pca,dpi=600,units='in',width=6,height=5)
-
-# Hierarchial Clustering
-### Extract the rlog matrix from the object
-rld_mat <- assay(rld) #retrieve matrix from the rld object
-# compute pairwise correlation values for samples
-rld_cor <- cor(rld_mat)
-# plot the correlation c=values as a heatmap
-pheatmap(rld_cor)
-
-# # Look at normalized data
+########################## Look at normalized data ###########################
+# this isn't used downstream in the DE analysis because the DESeq() function does the normalization automatically behind the scenes
+# instead we can use these normalized counts for downstream visualization if we want
 dds_counts <- estimateSizeFactors(dds)
-dds_counts <- counts(dds_counts, normalized = TRUE)
-head(dds_counts)
-View(dds_counts)
+sizeFactors(dds_counts) # tells us the normalization factors for each sample
+dds_counts <- counts(dds_counts, normalized = TRUE) #save this to an excel file to look at normalized counts for visualization
 
-# Differential Expression Analysis
-#Run DESeq
-dds <- DESeq(dds)
-res <- results(dds)
-res
+########################## Quality control then PCA Visualization ##########################
+cds <- estimateSizeFactors(dds)
+cds <- estimateDispersions(cds)
+vsd = varianceStabilizingTransformation(cds, blind=TRUE)
+theme_set(theme_bw())
+meanSdPlot(assay(vsd))
+plotDispEsts(cds)
+nudge <- position_nudge(y = 10)
+PCA_data <- plotPCA(vsd, intgroup = c("condition"), returnData = TRUE,ntop=500)
+View(PCA_data)
+percentVar <- round(100 * attr(PCA_data, "percentVar"))
+nudge <- position_nudge(y = 4)
+pca_plot <- ggplot(PCA_data, aes(x = PC1, y = PC2, color = condition, position_nudge(y=10))) +
+  geom_point(size =3, position = position_jitter(w=0.05, h=0.05)) +
+  xlab(paste0("PC1: ", percentVar[1], "% variance")) +
+  ylab(paste0("PC2: ", percentVar[2], "% variance")) +
+  coord_fixed()+
+  theme(panel.background = element_rect(fill = "white", colour = "black"))+
+  theme(plot.title = element_text(hjust = 0.5))+
+  scale_color_manual(values=c("dark blue", "dark red"),labels=c("Autogenous","Manassas 
+Anautogenous"))+
+  labs(color = "Population")
+ # geom_text_repel()
+# By default plotPCA() uses the top 500 most variable genes. 
+# You can change this by adding the ntop= argument and specifying how many of the genes you want the function to consider.
+setwd("/Users/samsturiale/Documents/Georgetown/Armbruster Lab/Auto_Biting_RNASeq/R_output_MvA")
+ggsave("MvA_pcaplot.png",plot=pca_plot,dpi=600,units='in',width=6,height=5)
 
 
-# Apparently, it is common to shrink the log fold change estimate for better visualization and ranking of genes.
-    #Often, lowly expressed genes tend to have relatively high levels of variability so shrinking can reduce this.
-resultsNames(dds)
-res_LFC <- lfcShrink(dds, coef="condition_A_vs_M", type="apeglm") ## plug in the output from resultsNames(dds) line as the coef
+########################## Actually run DESeq Analysis ###########################
+data <- DESeq(dds)
+
+## Plot dispersion estimates
+#   You expect your data to generally scatter around the curve, with the dispersion
+#   decreasing with increasing mean expression levels. If you see a cloud or 
+#   different shapes, then you might want to explore your data more to see if 
+#   you have contamination (mitochondrial, etc.) or outlier samples. 
+plotDispEsts(data)
+#   our plot looks okay because we see the decrease of dispersion values as you get higher mean values
+# https://github.com/hbctraining/DGE_workshop_salmon_online/blob/master/lessons/04b_DGE_DESeq2_analysis.md
+
+########################## Hypothesis Testing ###########################
+# DESeq2 uses a negative binomial distribution to model RNA-seq counts since they exhibit overdispersion
+# (variance > mean). 
+# It is common to shrink the log fold change estimate for better visualization and ranking of genes.
+#Often, lowly expressed genes tend to have relatively high levels of variability so shrinking can reduce this.
+resultsNames(data)
+res_LFC <- lfcShrink(data, coef="condition_M_vs_A", type="apeglm") ## plug in the output from resultsNames(dds) line as the coef
 res_LFC
-
+head(res_LFC)
 # Order the table by smallest p value
-resOrdered <- res_LFC[order(res_LFC$pvalue),]
+resOrdered <- res_LFC[order(res_LFC$padj),]
 summary(resOrdered)
 head(resOrdered)
+View(resOrdered)
 
 # Write out a table of all genes for KEGG enrichment
+setwd("/Users/samsturiale/Documents/Georgetown/Armbruster Lab/Auto_Biting_RNASeq/R_output_MvA")
 write.csv(resOrdered, 
-          file="./AvM_allgenes.csv", row.names = T)
+          file="./MvA_allgenes.csv", row.names = T)
 
-
-#Basic MA-plot
-plotMA(res, ylim=c(-3,3))
-plotMA(res_LFC, ylim=c(-3,3)) # See lots of shrinkage towards the beginning
-
-#If you want to interactivly find genes associated with certain points
-# idx <- identify(res$baseMean, res$log2FoldChange)
-# rownames(res)[idx]
-
-# Volcano plot of the lfcShrink data. For various setting try: `browseVignettes("EnhancedVolcano")`
-# Note for selecting fold change cutoff: log2foldchange 0.58 is equal to a 1.5 fold change
-EnhancedVolcano(res,
-                lab = rownames(res),
-                x = 'log2FoldChange',
-                y = 'pvalue',
-                selectLab = NA,
-                #drawConnectors = TRUE,
-                xlim = c(-2.5, 2.5),
-                ylim = c(0,25),
-                pCutoff = 10e-6,
-                FCcutoff = 1,
-                pointSize = 2.0,
-                labSize = 5.0)
-
+# Make a volcano plot
+## visualizer each results set with a volcano plot
 VP <- EnhancedVolcano(res_LFC,
-                lab = rownames(res_LFC),
-                x = 'log2FoldChange',
-                y = 'pvalue',
-                selectLab = NA,
-                #drawConnectors = TRUE,
-                xlim = c(-2.5, 2.5),
-                ylim = c(0,25),
-                pCutoff = 10e-6,
-                FCcutoff = 1,
-                pointSize = 2.0,
-                labSize = 5.0)
+                      lab = rownames(res_LFC),
+                      x = 'log2FoldChange',
+                      y = 'padj',
+                      ylab = "-Log10(p-adjusted)",
+                      selectLab = NA,
+                      #drawConnectors = TRUE,
+                      xlim = c(-2.5, 2.5),
+                      ylim = c(0,25),
+                      pCutoff = 0.05,
+                      FCcutoff = 1,
+                      pointSize = 2.0,
+                      labSize = 5.0)
+VP
 
-ggsave("auto_volcano.png",plot=VP,dpi=600,units='in',width=8,height=6)
+ggsave("volcano_MvA.png",plot=VP,dpi=600,units='in',width=8,height=6)
 
-
-library(tidyverse)
-# Can look at which of the result are significant and have a high enough log2 fold change
 sig_res <- res_LFC %>%
   data.frame() %>%
   rownames_to_column(var="gene") %>% 
   as.data.frame() %>%
   filter(padj < 0.05, abs(log2FoldChange) > 1)
 View(sig_res)
+length(unique(sig_res$gene)) #793 
+
+
+# adding gene names to this deg
+genes <- queryMany(sig_res$gene, scopes="symbol", fields=c("name"))
+colnames(genes)<-c("gene","id","score","gene name")
+genes <- as.data.frame(subset(genes, select = c("gene", "gene name")))
+View(genes)
+length(unique(genes$gene)) #793
+length(genes$gene) #802
+genes <- (genes[!duplicated(genes), ]) ##getting rid of duplicate gene name rows for Trnad-guc
+sig_res.gene <- as.data.frame(merge(genes,sig_res,by="gene"))
+View(sig_res.gene) 
+length(unique(sig_res.gene$gene)) #793
+length(sig_res.gene$gene) #793
 
 # Write out a table of these significant differentially expressed genes
-write.csv(dplyr::select(sig_res, gene, log2FoldChange, padj), 
-          file="../AvM_LFCshrink_padj.txt", row.names = F)
-
-# Write out just the gene names for later analysis in KEGG
-write.table(sig_res %>% dplyr::select(gene), 
-            file="../AvM_DEGids.txt", col.names = F, row.names = F, quote = F)
-
-##################
-# Trialing making a heatmap based on the normalized counts
-
-## Extract normalized expression for significant genes, and set the gene column (1) to row names
-norm_DEGsig <- dds_counts %>% 
-  data.frame() %>%
-  rownames_to_column("gene") %>%
-  filter(gene %in% sig_res$gene) %>% 
-  column_to_rownames(var = "gene") 
-
-## Annotate our heatmap (optional)
-annotation <- data.frame(row.names = sampleNames,
-                         type = sampleConditions)
-
-## Set a color palette
-heat_colors <- brewer.pal(6, "YlOrRd")
-
-## Run pheatmap
-pheatmap(norm_DEGsig, 
-         color = heat_colors, 
-         cluster_rows = T, 
-         show_rownames = F,
-         annotation = annotation, 
-         border_color = NA, 
-         fontsize = 10, 
-         scale = "row", 
-         fontsize_row = 10, 
-         height = 20)
-
-
-str(sig_res) # 793 DE that passed threshold
-
-
-
-#########################
-# Make output excel sheet to match M.F.P.'s old excel sheets
-# get gene name using myGene which uses Entrez
-res_print <- as.data.frame(res_LFC)
-res_print$geneID <- row.names(res_print)
-
-head(res_print)
-
-# Find gene names with mygene package
-dat <- queryMany(res_print$geneID, scopes="symbol", fields=c("name"))
-head(dat)
-length(dat$query)
-length(unique(dat$query))
-
-res_merged <- merge(res_print, dat, by.x="geneID", by.y="query")
-
-length(unique(res_merged$geneID))
-length(res_merged$geneID)
-
-keep_cols <- c("geneID", "name", "log2FoldChange", "pvalue", "padj")
-
-
-# Write out a csv with these data
-write.csv(res_merged[keep_cols], 
-          file="./Albo_DESeq_results_with_genenames.csv", row.names = F)
-
-View(res_merged)
-sig_res_merged <- res_merged %>%
-  data.frame() %>%
-  rownames_to_column(var="gene") %>% 
-  as.data.frame() %>%
-  filter(padj < 0.05, abs(log2FoldChange) > 1)
-View(sig_res_merged)
-
-length(unique(sig_res_merged$geneID)) ## 775 unique DE genes that pass filers
-length(sig_res_merged$geneID) ## 784 non-unique geneID which means that there are duplicates in names
-View(sig_res_merged)
-
-sig_resOrdered <- sig_res_merged[order(sig_res_merged$padj),]
-head(sig_resOrdered)
-
-write.csv(sig_resOrdered, 
-          file="./AvM_LFCshrink_padj_with_genenames.csv", row.names = F)
-
-## this tells you the geneIDs that are duplicated
-unique(sig_res_merged$geneID[duplicated(sig_res_merged$geneID)]) 
-# Trnaud-guc. Has 10 rows for this geneID
-
-
+setwd("/Users/samsturiale/Documents/Georgetown/Armbruster Lab/Auto_Biting_RNASeq/R_output_MvA")
+write.csv(sig_res.gene, 
+          file="./MvA_sig.gene.csv", row.names = F)
