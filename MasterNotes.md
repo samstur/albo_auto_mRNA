@@ -28,7 +28,7 @@ Output sam files were converted to bam and then indexed ([script](https://github
 HTSeq (v0.13.5) was used to counts reads mapped to genes for downstream analyses ([script](https://github.com/samstur/albo_auto_mRNA/blob/main/htseq_count.sh)). The following line in linux was run on each of the output HTSeqCount files to calculate the totle number of reads assigned to genes by HTSeq (sum the number of read counts across genes for each sample):
 sed -n '1,22193p ' 10H_S11_htseqCount | awk '{print $2}' | awk '{Total=Total+$1} END{print "Total is: " Total}'
 
-# Downstream analysis of gene counts using R (v4.1.3)
+# Downstream analysis of gene counts using R (v4.3.2)
 
 ### DESeq2 (v1.34.0) package in R was used to identify differentially expressed genes
 ([script](https://github.com/samstur/albo_auto_mRNA/blob/main/DESeq_script.R))
