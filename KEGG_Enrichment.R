@@ -15,6 +15,7 @@ View(all_genes_list)
 # Make a list of all the ncbi to gene ids using the organism code for albopictus (aalb)
 convs <- keggConv("ncbi-geneid", "aalb") 
 head(convs)
+names(convs)
 
 all_genes_list$ncbi_geneid <- sub("LOC","ncbi-geneid:", all_genes_list$gene)
 head(all_genes_list)
@@ -38,7 +39,7 @@ genes.by.pathway <- sapply(pathway.codes,
                              return(pw2)
                            }
 )
-View(genes.by.pathway)
+tail(genes.by.pathway)
 
 geneList <- all_genes_list$padj 
 head(geneList)
@@ -49,6 +50,11 @@ head(geneList)
 
 names(geneLFClist) <- sub("ncbi-geneid:","", all_genes_list$ncbi_geneid)
 head(geneLFClist)
+
+pathway.genes<-genes.by.pathway["aalb04711"]
+list.genes.in.pathway <- intersect(names(geneList), pathway.genes[[1]]) ## added extra brackets here
+list.genes.not.in.pathway <- setdiff(names(geneList), list.genes.in.pathway)
+intersect(list.genes.in.pathway,list.genes.not.in.pathway)
 
 pathway_pval <- data.frame()
 for (pathway in 1:length(genes.by.pathway)){
@@ -105,7 +111,7 @@ write.csv(pathway_pval,
 
 
 # Address the magnitude and direction of log2 fold-change for specific pathways
-# loop version pull out all sig DE genes in each 
+# loop version of original code to pull out all sig DE genes in each 
 # enriched pathway
 library("tidyverse")
 # first load in the pathways that we're interested in. I've put all the ones that came up as sig enriched
@@ -147,5 +153,7 @@ Finaldf_2 <- Finaldf[, col_order]
 Finaldf_3 <- Finaldf_2[1:9]
 View(Finaldf_3)
 
-write.csv(Finaldf_3, 
+
+
+write.csv(Finaldf_2, 
           file="./MvA_DEgenes_in_EnrichedKEGGPathways.csv", row.names = F)
