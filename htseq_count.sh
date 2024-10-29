@@ -17,7 +17,7 @@ count_dir=/home/sls366/albo_biting/mRNA/counts_dir
 htseq=/home/sls366/.conda/envs/conda_env/bin/htseq-count
 ref=/home/sls366/albo_biting/genome_files/aedes_albopictus_AalbF3.gff3
 
-#- RUN fastqc ----------------------------------------------------------------#
+#- RUN htseq ----------------------------------------------------------------#
 
 files=(${bam_dir}/*_Aligned.out.bam)
 for file in ${files[@]}
